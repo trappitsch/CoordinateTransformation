@@ -3,8 +3,8 @@ import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,\
     QTableWidgetItem, QLabel, QMessageBox, \
     QFileDialog
-from PyQt5.QtGui import QDoubleValidator, QIntValidator, QGuiApplication
-from PyQt5.QtCore import pyqtSlot, Qt, QTimer
+from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtCore import pyqtSlot
 
 class MainApp(QWidget):
     """
@@ -15,8 +15,7 @@ class MainApp(QWidget):
     Date:       September 10, 2018
 
     Todo:
-    - Finish editing when done when pressing calculate
-    - Copy a whole row from the table
+    - Implement Copy and Paste with Ctrl+C, Ctrl+V
     """
 
     def __init__(self):
@@ -32,6 +31,9 @@ class MainApp(QWidget):
         self.width = 760
         # this is used for geometry but then also for tableheight. tableheight dominates!
         self.height = 400
+
+        # my clipboard
+        self.clipboard = QApplication.clipboard()
 
         # initialize the UI
         self.setWindowTitle(self.title)
@@ -101,6 +103,13 @@ class MainApp(QWidget):
         clear_butt = QPushButton('Clear all')
         clear_butt.clicked.connect(self.cleartable)
         bottrowbutthlayout.addWidget(clear_butt)
+        # copy and paste buttons
+        copybutt = QPushButton('Copy')
+        copybutt.clicked.connect(self.copy)
+        bottrowbutthlayout.addWidget(copybutt)
+        pastebutt = QPushButton('Paste')
+        pastebutt.clicked.connect(self.paste)
+        bottrowbutthlayout.addWidget(pastebutt)
         bottrowbutthlayout.addStretch()
         # information on Fit
         self.infolbl = QLabel('')
@@ -171,9 +180,9 @@ class MainApp(QWidget):
                 data.append(itsep)
 
         # let's check if there is a location description, i.e., 3 or 5 columns
-        if len(data[0]) == 3 or len(data[0]) == 5:
+        if len(data[0]) == 3 or len(data[0]) == 5 or len(data[0]) == 7:
             namecolumn = True
-        elif len(data[0]) == 2 or len(data[0]) == 4:
+        elif len(data[0]) == 2 or len(data[0]) == 4 or len(data[0]) == 6:
             namecolumn = False
         else:
             QMessageBox.warning(self, 'Wrong input format', 'Your input does not have a valid format.')
@@ -182,6 +191,7 @@ class MainApp(QWidget):
 
         # now make floats, and if not skip the column
         dataflt = []
+        headercolumn = False
         for it in range(len(data)):
             tmp = []
             if namecolumn:
@@ -191,16 +201,30 @@ class MainApp(QWidget):
                         float(data[it][jt])
                         tmp.append(data[it][jt])
                     except ValueError:
-                        tmp.append('')
+                        if jt == 1:
+                            headercolumn = True
+                        else:
+                            tmp.append('')
+                if headercolumn:
+                    headercolumn = False
+                    continue
+                else:
+                    dataflt.append(tmp)
 
-                dataflt.append(tmp)
             else:
                 for jt in range(len(data[it])):
                     try:
                         tmp.append(float(data[it][jt]))
                     except ValueError:
-                        tmp.append('')
-                dataflt.append(tmp)
+                        if jt == 1:
+                            headercolumn = True
+                        else:
+                            tmp.append('')
+                if headercolumn:
+                    headercolumn = False
+                    continue
+                else:
+                    dataflt.append(tmp)
 
         # first set the length of the table to be the length of the data
         self.datatable.setRowCount(len(dataflt))
@@ -216,10 +240,10 @@ class MainApp(QWidget):
     def savefile(self, sep):
         # get file name from dialog
         if sep == 'txt':
-            filename = QFileDialog.getSaveFileName(self, 'Save File As', '',
+            filename, _ = QFileDialog.getSaveFileName(self, 'Save File As', '',
                                                    'Text Files (*.txt);;All Files (*)')
         else:
-            filename = QFileDialog.getSaveFileName(self, 'Save File As', '',
+            filename, _ = QFileDialog.getSaveFileName(self, 'Save File As', '',
                                                    'Comma Separated Files (*.csv);;All Files (*)')
 
         # if filename is empty
@@ -227,7 +251,7 @@ class MainApp(QWidget):
             return
 
         # open the file
-        f = open(filename[0], 'w')
+        f = open(filename, 'w')
 
         # separator
         if sep == 'csv':
@@ -253,11 +277,11 @@ class MainApp(QWidget):
         f.close()
 
     def test(self):
-        print('Test button clicked')
-        print(self.datatable.item(0, 2).text())
-        print(type(self.datatable.item(0,2)))
-        print(type(self.datatable.item(0,3)))
-        print(type(self.datatable.item(0, 2).text()))
+        self.clipboard.clear()
+        print(self.clipboard.text())
+        print(type(self.clipboard.text()))
+
+        self.datatable.setCurrentItem(None)
 
     def help(self):
         # todo add a help file and maybe add tooltips like for LION software
@@ -267,6 +291,9 @@ class MainApp(QWidget):
         print('Help...')
 
     def calculate(self):
+        # stop editing
+        self.datatable.setCurrentItem(None)
+
         # initialize data input array as nan
         tabold = np.full((self.datatable.rowCount(), 2), np.nan)
         tabref = np.full((self.datatable.rowCount(), 2), np.nan)
@@ -360,7 +387,7 @@ class MainApp(QWidget):
             # add the delta between the points in the actual points
             dsane += np.sqrt((crefcalc[it][0] - crefnew[it][0])**2. + (crefcalc[it][1] - crefnew[it][1])**2.)
             # now divide by total number of points to get average deviation
-            dsane /= len(crefnew)
+        dsane /= len(crefnew)
 
         # set text in info label
         self.infolbl.setText('Average distance error: ' + str(np.round(dsane, self.rounddig)))
@@ -375,6 +402,80 @@ class MainApp(QWidget):
 
     def addrow(self):
         self.datatable.insertRow(self.datatable.rowCount())
+
+    def copy(self):
+        inds = []
+        for idx in self.datatable.selectedIndexes():
+            inds.append([idx.row(), idx.column()])
+        # now start string to copy
+        str2cpy = ''
+        try:
+            oldrow = inds[0][0]
+        except IndexError:   # nothing selected
+            QMessageBox.warning(self, 'Selection error', 'Select cells to copy!')
+            return
+        for it in range(len(inds)):
+            # easier handling
+            row = inds[it][0]
+            col = inds[it][1]
+            datfield = self.datatable.item(row, col)
+            # check if the first
+            if it == 0:
+                if datfield is None:
+                    str2cpy += ''
+                else:
+                    str2cpy += datfield.text()
+            else:
+                # add separator
+                if oldrow == row:
+                    str2cpy += '\t'
+                else:
+                    str2cpy += '\n'
+                # now add the entry
+                if datfield is None:
+                    str2cpy += ''
+                else:
+                    str2cpy += datfield.text()
+            # set new row
+            oldrow = row
+        # now copy the string to the clipboard
+        self.clipboard.clear()
+        self.clipboard.setText(str2cpy)
+
+    def paste(self):
+        # get the current index
+        try:
+            tmp = self.datatable.selectedIndexes()[0]
+        except IndexError:   # nothing selected
+            QMessageBox.warning(self, 'Selection error', 'Select a cell where to paste into')
+            return
+        currind = [tmp.row(), tmp.column()]
+        # read in clipboard
+        datain = self.clipboard.text().split('\n')
+
+        # check for empty input
+        if datain is '':
+            QMessageBox.warning(self, 'Paste error', 'Nothing in clipboard to paste.')
+            return
+
+        data = []
+        for line in datain:
+            data.append(line.replace('\r','').split())
+
+        # check if outside of range in horizontal
+        if currind[1] + len(data[0]) > 7:
+            QMessageBox.warning(self, 'Paste error', 'Too many columns in clipboard to fit. Wrong selection where to '
+                                                     'paste into?')
+            return
+
+        # add rows in the end until we have enough to paste into
+        while currind[0] + len(data) > self.datatable.rowCount():
+            self.datatable.insertRow(self.datatable.rowCount())
+
+        # now fill the cells with the pasted stuff
+        for row in range(len(data)):
+            for col in range(len(data[row])):
+                self.datatable.setItem(row + currind[0], col+currind[1], QTableWidgetItem(data[row][col]))
 
     def cleartable(self):
         # clear the table
