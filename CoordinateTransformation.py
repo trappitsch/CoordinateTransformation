@@ -3,7 +3,7 @@ import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,\
     QTableWidgetItem, QLabel, QMessageBox, \
     QFileDialog
-from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtGui import QGuiApplication, QActionEvent
 from PyQt5.QtCore import pyqtSlot
 
 class MainApp(QWidget):
