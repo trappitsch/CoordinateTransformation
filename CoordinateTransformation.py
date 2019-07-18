@@ -2,9 +2,9 @@ import sys
 import numpy as np
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,\
     QTableWidgetItem, QLabel, QMessageBox, \
-    QFileDialog
-from PyQt5.QtGui import QGuiApplication, QActionEvent
-from PyQt5.QtCore import pyqtSlot
+    QFileDialog, QRadioButton
+from PyQt5.QtGui import QGuiApplication
+from PyQt5.QtCore import pyqtSlot, pyqtSignal
 
 class MainApp(QWidget):
     """
@@ -21,17 +21,19 @@ class MainApp(QWidget):
 
     def __init__(self):
         # run in debug mode?
-        self.rundebug = False
+        self.rundebug = True
         # round digits
         self.rounddig = 3
+        # which calculation mode to start in (Nittler or Admon - labels of radiobuttons)
+        self.calcmode = 'Nittler'
         # initialize the thing
         super().__init__()
         self.title = 'Coordinate Transformation'
-        self.left = 10
-        self.top = 30
-        self.width = 760
+        self.left = 50
+        self.top = 80
+        self.width = 900
         # this is used for geometry but then also for tableheight. tableheight dominates!
-        self.height = 400
+        self.height = 845
 
         # my clipboard
         self.clipboard = QApplication.clipboard()
@@ -70,6 +72,26 @@ class MainApp(QWidget):
         savecsv_butt.setToolTip('Save the current table, as is displayed, into a txt file. This file can also be\n'
                                 'imported later with the \'Open txt\' button.')
         toprowbutthlayout.addWidget(savetxt_butt)
+        # add radiobuttons for method
+        toprowbutthlayout.addStretch()
+        mnit_radio = QRadioButton('Nittler')
+        mnit_radio.setToolTip('Method from Larry Nittler\' PhD thesis, App. E. Only shift and rotation are \n'
+                              'considered. Strech not possible. Linear regression through all reference points\n'
+                              'is calculated, so mechanical slack, etc., is regressed out over time.')
+        madm_radio = QRadioButton('Admon')
+        madm_radio.setToolTip('Method from Admon et al. (2015). See \'Help\' for full reference. Only three\n'
+                              'fiducial marks are considered for coordinate transformation, however, the stretch\n'
+                              'of coordinate systems is included as well.')
+        if self.calcmode == 'Nittler':
+            mnit_radio.setChecked(True)
+        else:
+            madm_radio.setChecked(True)
+        # connect buttons to the subroutine
+        mnit_radio.toggled.connect(lambda: self.set_calcmode(mnit_radio))
+        mnit_radio.toggled.connect(lambda: self.set_calcmode(madm_radio))
+        # add to layout
+        toprowbutthlayout.addWidget(mnit_radio)
+        toprowbutthlayout.addWidget(madm_radio)
         # add test, help, quit
         toprowbutthlayout.addStretch()
         if self.rundebug:
@@ -86,11 +108,11 @@ class MainApp(QWidget):
         toprowbutthlayout.addWidget(quit_butt)
         # add buttons to layout
         outervlayout.addLayout(toprowbutthlayout)
-        outervlayout.addStretch()
+        # outervlayout.addStretch()
 
         # make the table
         self.datatable = QTableWidget()
-        self.datatable.setRowCount(13)
+        self.datatable.setRowCount(23)
         self.datatable.setColumnCount(7)
         # set headers
         headers = [QTableWidgetItem('Name'), QTableWidgetItem('x'), QTableWidgetItem('y'),
@@ -98,14 +120,10 @@ class MainApp(QWidget):
                    QTableWidgetItem('x_calc'), QTableWidgetItem('y_calc')]
         for it in range(len(headers)):
             self.datatable.setHorizontalHeaderItem(it, headers[it])
-        # set the height of the table widget
-        self.datatable.setFixedHeight(self.height)
         # set up clipboard for table
         self.clip = QGuiApplication.clipboard()
         # add table to widget
         outervlayout.addWidget(self.datatable)
-
-
         # bottom button row
         bottrowbutthlayout = QHBoxLayout()
         # add Row
@@ -145,7 +163,7 @@ class MainApp(QWidget):
                              'make sure that you have entered proper numbers.')
         bottrowbutthlayout.addWidget(calc_butt)
         # add to outer layout
-        outervlayout.addStretch()
+        # outervlayout.addStretch()
         outervlayout.addLayout(bottrowbutthlayout)
 
         # set layout to app
@@ -154,6 +172,12 @@ class MainApp(QWidget):
         # show the UI
         self.show()
 
+    def set_calcmode(self, rb):
+        if rb.isChecked():
+            self.calcmode = rb.text()
+            if self.rundebug:
+                print(self.calcmode)
+
     @pyqtSlot()
     # Buttons
     def openfile(self, sep):
@@ -161,7 +185,7 @@ class MainApp(QWidget):
             if sep == 'txt':
                 filename = 'testinput.txt'
             else:
-                filename = 'testinput.csv'
+                filename = 'testadmon.csv'
         else:
             # file dialog
             options = QFileDialog.Options()
@@ -304,33 +328,121 @@ class MainApp(QWidget):
         f.close()
 
     def test(self):
-        self.clipboard.clear()
-        print(self.clipboard.text())
-        print(type(self.clipboard.text()))
-
-        self.datatable.setCurrentItem(None)
+        print(self.calcmode)
 
     def help(self):
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Information)
         msgBox.setWindowTitle('Help')
         msgBox.setInformativeText('\bHelp\n\n\bColumns:\n'
-                       'Name:\tThe name of the given location\n'
-                       'x:\tThe x coordinate in the old reference system\n'
-                       'y:\tThe y coordinate in the old reference system\n'
-                       'x_ref:\tThe measured x coordinate in the new reference system\n'
-                       'y_ref:\tThe measured y coordinate in the new reference system\n'
-                       'x_calc:\tThe regressed x coordinate in the new reference system\n'
-                       'x_calc:\tThe regressed x coordinate in the new reference system\n\n'
-                       'For additional help, hover over the buttons and a tooltip will appear\n'
-                       'that will explain what the button does. Also: just play with the\n'
-                       'program, it should hopefully be rather self explanatory\n\n'
-                       'Bug reports, in person help, further info, input:\n'
-                       'Contact Reto Trappitsch, trappitsch1@llnl.gov')
+                                  'Name:\tThe name of the given location\n'
+                                  'x:\tThe x coordinate in the old reference system\n'
+                                  'y:\tThe y coordinate in the old reference system\n'
+                                  'x_ref:\tThe measured x coordinate in the new reference system\n'
+                                  'y_ref:\tThe measured y coordinate in the new reference system\n'
+                                  'x_calc:\tThe regressed x coordinate in the new reference system\n'
+                                  'x_calc:\tThe regressed x coordinate in the new reference system\n\n'
+                                  'For additional help, hover over the buttons and a tooltip will appear\n'
+                                  'that will explain what the button does. Also: just play with the\n'
+                                  'program, it should hopefully be rather self explanatory\n\n'
+                                  'Nittler: (PhD Thesis Larry Nittler, Appendix E)\n'
+                                  'Linear regression to as many reference points that are given. Only \n'
+                                  'Rotation and shift are included in this method. No stretch of the data.\n'
+                                  'Make sure that the reference systems are in the same unit system!\n\n'
+                                  'Admon: (Admon et al. (2005) Microsc. Microanal. 11, 354–362)\n'
+                                  'Only three fiducial marks can be selected, however, stretch of the\n'
+                                  'coordinate system is also calculated. Ideal when switching between\n'
+                                  'different units from one coordinate system to the next. This method\n'
+                                  'was so far used by LLNL NanoSIMS group.\n\n'
+                                  'Bug reports, in person help, further info, input:\n'
+                                  'Contact Reto Trappitsch, trappitsch1@llnl.gov')
         msgBox.setStandardButtons(QMessageBox.Ok)
         msgBox.exec()
 
     def calculate(self):
+        # admon or nittler
+        if self.calcmode == 'Nittler':
+            self.calculate_nittler()
+        else:
+            self.calculate_admon()
+
+    def calculate_admon(self):
+        # stop editing
+        self.datatable.setCurrentItem(None)
+
+        # fake z coordinate
+        zcoord = 1.
+
+        # initialize data input array as nan
+        tabold = np.full((self.datatable.rowCount(), 3), np.nan)
+        tabref = np.full((self.datatable.rowCount(), 2), np.nan)
+        for it in range(self.datatable.rowCount()):
+            # append data
+            if self.datatable.item(it, 1) is not None and self.datatable.item(it, 2) is not None:
+                try:
+                    if self.datatable.item(it, 1).text() is not '' and self.datatable.item(it, 2).text() is not '':
+                        tabold[it][0] = float(self.datatable.item(it, 1).text())
+                        tabold[it][1] = float(self.datatable.item(it, 2).text())
+                        tabold[it][2] = zcoord
+                except ValueError:
+                    QMessageBox.warning(self, 'Table error', 'There is an error in your data table. Please make sure '
+                                                             'all numbers are floats.')
+                    return
+                except AttributeError:
+                    QMessageBox.warning(self, 'Table error', 'There is an error in the data table. Did you finish all '
+                                                             'editing?')
+
+            # append reference
+            if self.datatable.item(it, 3) is not None and self.datatable.item(it, 4) is not None:
+                try:
+                    if self.datatable.item(it, 3).text() is not '' and self.datatable.item(it, 4).text() is not '':
+                        tabref[it][0] = float(self.datatable.item(it, 3).text())
+                        tabref[it][1] = float(self.datatable.item(it, 4).text())
+                except ValueError:
+                    QMessageBox.warning(self, 'Table error', 'There is an error in your data table. Please fix.')
+                    return
+                except AttributeError:
+                    QMessageBox.warning(self, 'Table error', 'There is an error in the data table. Did you finish all '
+                                                             'editing?')
+
+        # make sure at least two reference points are given
+        # now find crefold and crefnew for calculation of parameters
+        crefold = []
+        crefnew = []
+        for it in range(len(tabold)):
+            if not np.isnan(tabold[it][0]) and not np.isnan(tabref[it][0]):
+                crefold.append([tabold[it][0], tabold[it][1], zcoord])   # artificially add a z coordinate
+                crefnew.append([tabref[it][0], tabref[it][1], zcoord])   # artificially add a z coordinate
+
+        if len(crefnew) < 3:
+            QMessageBox.warning(self, 'Reference error', 'Need three reference points to transform into the '
+                                                         'new coordinates.')
+            return
+        if len(crefnew) > 3:
+            QMessageBox.information(self, 'Too many reference points', 'Only the first three reference values are '
+                                                                       'taken for the transformation.')
+
+        # transform to np.arrays, only take the first three entries
+        crefold = np.array(crefold[0:3])
+        crefnew = np.array(crefnew[0:3])
+        crefoldt = np.array(crefold).transpose()
+        crefnewt = np.array(crefnew).transpose()
+
+        tabnew = np.zeros((len(tabold), 2))
+        for it in range(len(tabold)):
+            tmpnew = np.matmul(crefnewt, np.matmul(np.linalg.inv(crefoldt), tabold[it]))
+            tabnew[it][0] = np.round(tmpnew[0], self.rounddig)
+            tabnew[it][1] = np.round(tmpnew[1], self.rounddig)
+
+        # write the calc and the new into the table
+        for it in range(len(tabold)):
+            self.datatable.setItem(it, 5, QTableWidgetItem(str(tabnew[it][0])))
+            self.datatable.setItem(it, 6, QTableWidgetItem(str(tabnew[it][1])))
+
+        # resize columns to contents
+        self.datatable.resizeColumnsToContents()
+
+    def calculate_nittler(self):
         # stop editing
         self.datatable.setCurrentItem(None)
 
@@ -524,7 +636,8 @@ class MainApp(QWidget):
 
         if msgbox == QMessageBox.Yes:
             self.datatable.clearContents()
-            self.datatable.setRowCount(13)
+            self.datatable.setRowCount(23)
+            # set geometry
 
 
 if __name__ == '__main__':
