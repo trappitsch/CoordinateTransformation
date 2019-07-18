@@ -11,11 +11,12 @@ class MainApp(QWidget):
     Coordinate transform program for relocating samples in different coordinate systems
 
     Developer:  Reto Trappitsch, trappitsch1@llnl.gov
-    Version:    0.9
-    Date:       September 10, 2018
+    Version:    1.0
+    Date:       July 17, 2019
 
     Todo:
     - Implement Copy and Paste with Ctrl+C, Ctrl+V
+    - Delete selection, or a given row
     """
 
     def __init__(self):
@@ -47,17 +48,27 @@ class MainApp(QWidget):
         # open buttons
         opencsv_butt = QPushButton('Open csv')
         opencsv_butt.clicked.connect(lambda: self.openfile('csv'))
+        opencsv_butt.setToolTip('Load a comma separated file into the program. Headerlines are automatically ignored.\n'
+                                'The file needs to have the same format as the table of the program. Extra columns\n'
+                                'are automatically ignored.')
         toprowbutthlayout.addWidget(opencsv_butt)
         opentxt_butt = QPushButton('Open txt')
         opentxt_butt.clicked.connect(lambda: self.openfile('txt'))
+        opentxt_butt.setToolTip('Load a tab separated text file into the program. Headerlines are automatically\n'
+                                'ignored. The file needs to have the same format as the table of the program. Extra\n'
+                                'columns are automatically ignored.')
         toprowbutthlayout.addWidget(opentxt_butt)
         # save buttons
         toprowbutthlayout.addStretch()
         savecsv_butt = QPushButton('Save csv')
         savecsv_butt.clicked.connect(lambda: self.savefile('csv'))
+        savecsv_butt.setToolTip('Save the current table, as is displayed, into a csv file. This file can also be\n'
+                                'imported later with the \'Open csv\' button.')
         toprowbutthlayout.addWidget(savecsv_butt)
         savetxt_butt = QPushButton('Save txt')
         savetxt_butt.clicked.connect(lambda: self.savefile('txt'))
+        savecsv_butt.setToolTip('Save the current table, as is displayed, into a txt file. This file can also be\n'
+                                'imported later with the \'Open txt\' button.')
         toprowbutthlayout.addWidget(savetxt_butt)
         # add test, help, quit
         toprowbutthlayout.addStretch()
@@ -67,9 +78,11 @@ class MainApp(QWidget):
             toprowbutthlayout.addWidget(test_butt)
         help_butt = QPushButton('Help')
         help_butt.clicked.connect(self.help)
+        help_butt.setToolTip('Display a brief help message.')
         toprowbutthlayout.addWidget(help_butt)
         quit_butt = QPushButton('Quit')
         quit_butt.clicked.connect(self.close)
+        quit_butt.setToolTip('Close the program')
         toprowbutthlayout.addWidget(quit_butt)
         # add buttons to layout
         outervlayout.addLayout(toprowbutthlayout)
@@ -98,17 +111,26 @@ class MainApp(QWidget):
         # add Row
         addrow_butt = QPushButton('+ Row')
         addrow_butt.clicked.connect(self.addrow)
+        addrow_butt.setToolTip('Add an empty row to the data table. You can then manually enter new values into this\n'
+                               'empty row.')
         bottrowbutthlayout.addWidget(addrow_butt)
         # clear table
         clear_butt = QPushButton('Clear all')
         clear_butt.clicked.connect(self.cleartable)
+        clear_butt.setToolTip('Clear all data in the table. A confirmation will be required, but after that, there\n'
+                              'is no undoing this action. Make sure you have the data, assuming you need it, saved.')
         bottrowbutthlayout.addWidget(clear_butt)
         # copy and paste buttons
         copybutt = QPushButton('Copy')
         copybutt.clicked.connect(self.copy)
+        copybutt.setToolTip('Copy the selected rows into the clipboard. This selection can then be pasted, e.g., into\n'
+                            'any text file or spreadsheet file')
         bottrowbutthlayout.addWidget(copybutt)
         pastebutt = QPushButton('Paste')
         pastebutt.clicked.connect(self.paste)
+        pastebutt.setToolTip('Paste cells from clipboard into the table. Note that new rows will automatically be\n'
+                             'added as needed. The program will however check that you have not selected too many\n'
+                             'columns to paste into this program.')
         bottrowbutthlayout.addWidget(pastebutt)
         bottrowbutthlayout.addStretch()
         # information on Fit
@@ -118,6 +140,9 @@ class MainApp(QWidget):
         # calculate button
         calc_butt = QPushButton('Calculate')
         calc_butt.clicked.connect(self.calculate)
+        calc_butt.setToolTip('Calculate the regression. An \'Average distance error\' will be provided. This is a\n'
+                             'number that is good to compare from fit to fit. If weird, non-numeric values show up\n'
+                             'make sure that you have entered proper numbers.')
         bottrowbutthlayout.addWidget(calc_butt)
         # add to outer layout
         outervlayout.addStretch()
@@ -263,10 +288,12 @@ class MainApp(QWidget):
         f.writelines('Name' + ss + 'x_old' + ss + 'y_old' + ss + 'x_ref' + ss + 'y_ref' + ss + 'x_calc' + ss +
                      'y_calc'  + '\n')
         # write the data out
+
         for it in range(self.datatable.rowCount()):
             for jt in range(7):
                 if self.datatable.item(it, jt) is not None:
-                    f.writelines(self.datatable.item(it, jt).text())
+                    savestring = self.datatable.item(it, jt).text().strip().rstrip().replace('\n', '').replace('\r', '')
+                    f.writelines(savestring)
                 # separator if not last
                 if jt < 6:
                     f.writelines(ss)
@@ -284,11 +311,24 @@ class MainApp(QWidget):
         self.datatable.setCurrentItem(None)
 
     def help(self):
-        # todo add a help file and maybe add tooltips like for LION software
-        QMessageBox.information(self, 'Help', 'Help is not yet implemented. Ask Reto. There\'s tons of other things '
-                                              'still to do in this code. You should take it with a grain of salt. '
-                                              'Or two...')
-        print('Help...')
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Information)
+        msgBox.setWindowTitle('Help')
+        msgBox.setInformativeText('\bHelp\n\n\bColumns:\n'
+                       'Name:\tThe name of the given location\n'
+                       'x:\tThe x coordinate in the old reference system\n'
+                       'y:\tThe y coordinate in the old reference system\n'
+                       'x_ref:\tThe measured x coordinate in the new reference system\n'
+                       'y_ref:\tThe measured y coordinate in the new reference system\n'
+                       'x_calc:\tThe regressed x coordinate in the new reference system\n'
+                       'x_calc:\tThe regressed x coordinate in the new reference system\n\n'
+                       'For additional help, hover over the buttons and a tooltip will appear\n'
+                       'that will explain what the button does. Also: just play with the\n'
+                       'program, it should hopefully be rather self explanatory\n\n'
+                       'Bug reports, in person help, further info, input:\n'
+                       'Contact Reto Trappitsch, trappitsch1@llnl.gov')
+        msgBox.setStandardButtons(QMessageBox.Ok)
+        msgBox.exec()
 
     def calculate(self):
         # stop editing
