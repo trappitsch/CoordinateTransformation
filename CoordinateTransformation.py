@@ -12,7 +12,7 @@ class MainApp(QWidget):
 
     Developer:  Reto Trappitsch, trappitsch1@llnl.gov
     Version:    1.0
-    Date:       July 17, 2019
+    Date:       July 18, 2019
 
     Todo:
     - Implement Copy and Paste with Ctrl+C, Ctrl+V
@@ -21,7 +21,7 @@ class MainApp(QWidget):
 
     def __init__(self):
         # run in debug mode?
-        self.rundebug = True
+        self.rundebug = False
         # round digits
         self.rounddig = 3
         # which calculation mode to start in (Nittler or Admon - labels of radiobuttons)
