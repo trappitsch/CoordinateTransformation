@@ -1,4 +1,9 @@
-old/
+div/
+div/*
+target/
+target/*
+venv/
+venv/*
 .idea/
 .DS_Store/
 
