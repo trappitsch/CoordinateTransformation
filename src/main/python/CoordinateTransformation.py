@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from fbs_runtime.application_context.PyQt5 import ApplicationContext
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,\
     QTableWidgetItem, QLabel, QMessageBox, \
     QFileDialog, QRadioButton
@@ -11,7 +12,7 @@ class MainApp(QWidget):
     Coordinate transform program for relocating samples in different coordinate systems
 
     Developer:  Reto Trappitsch, trappitsch1@llnl.gov
-    Version:    1.0
+    Version:    2.0.0
     Date:       July 18, 2019
 
     Todo:
@@ -641,6 +642,7 @@ class MainApp(QWidget):
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
+    appctxt = ApplicationContext()
     ex = MainApp()
-    sys.exit(app.exec_())
+    exit_code = appctxt.app.exec_()  # 2. Invoke appctxt.app.exec_()
+    sys.exit(exit_code)
