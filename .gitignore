@@ -4,6 +4,8 @@ target/
 target/*
 venv/
 venv/*
-.idea/
-.DS_Store/
+*.idea/
+*.DS_Store/
+*.pyc
 
+src/main/python/__pycache__/CoordinateTransformation.cpython-37.pyc
