@@ -1,23 +1,20 @@
 import sys
+import pandas as pd
 import numpy as np
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,\
-    QTableWidgetItem, QLabel, QMessageBox, \
-    QFileDialog, QRadioButton
-from PyQt5.QtGui import QGuiApplication
-from PyQt5.QtCore import pyqtSlot, pyqtSignal
+    QTableWidgetItem, QLabel, QMessageBox, QFileDialog, QRadioButton, QSpinBox, QShortcut, QMenu
+from PyQt5.QtGui import QGuiApplication, QKeySequence, QMouseEvent
+from PyQt5.QtCore import Qt
+
 
 class MainApp(QWidget):
     """
     Coordinate transform program for relocating samples in different coordinate systems
 
     Developer:  Reto Trappitsch, trappitsch1@llnl.gov
-    Version:    2.0.0
-    Date:       July 18, 2019
-
-    Todo:
-    - Implement Copy and Paste with Ctrl+C, Ctrl+V
-    - Delete selection, or a given row
+    Version:    2.1.0
+    Date:       April 14, 2020
     """
 
     def __init__(self):
@@ -36,8 +33,16 @@ class MainApp(QWidget):
         # this is used for geometry but then also for tableheight. tableheight dominates!
         self.height = 845
 
+        # default for header, columns
+        self.default_header_rows = 1
+        self.default_name_column = 1
+        self.default_x_column = 2
+        self.default_y_column = 3
+
         # my clipboard
         self.clipboard = QApplication.clipboard()
+
+        self.setup_keyboard_shortcuts()
 
         # initialize the UI
         self.setWindowTitle(self.title)
@@ -49,19 +54,15 @@ class MainApp(QWidget):
         # some top row buttons and layout
         toprowbutthlayout = QHBoxLayout()
         # open buttons
-        opencsv_butt = QPushButton('Open csv')
-        opencsv_butt.clicked.connect(lambda: self.openfile('csv'))
-        opencsv_butt.setToolTip('Load a comma separated file into the program. Headerlines are automatically ignored.\n'
-                                'The file needs to have the same format as the table of the program. Extra columns\n'
-                                'are automatically ignored.')
-        toprowbutthlayout.addWidget(opencsv_butt)
-        opentxt_butt = QPushButton('Open txt')
-        opentxt_butt.clicked.connect(lambda: self.openfile('txt'))
-        opentxt_butt.setToolTip('Load a tab separated text file into the program. Headerlines are automatically\n'
-                                'ignored. The file needs to have the same format as the table of the program. Extra\n'
-                                'columns are automatically ignored.')
-        toprowbutthlayout.addWidget(opentxt_butt)
-        # save buttons
+        openfile_butt = QPushButton('Open file')
+        openfile_butt.clicked.connect(self.openfile)
+        openfile_butt.setToolTip('Load coordinates from a file. Please make sure you specify\n'
+                                'how many header rows the file has and where your x, y, and\n'
+                                'fiducial data is.'
+                                'Files that can be read are: comma separated (*.csv), tab\n'
+                                'separated (*.txt), or excel files.')
+        toprowbutthlayout.addWidget(openfile_butt)
+        # save button
         toprowbutthlayout.addStretch()
         savecsv_butt = QPushButton('Save csv')
         savecsv_butt.clicked.connect(lambda: self.savefile('csv'))
@@ -111,10 +112,80 @@ class MainApp(QWidget):
         outervlayout.addLayout(toprowbutthlayout)
         # outervlayout.addStretch()
 
+        # set a second row with options, QSpinBoxes mostly
+        secondrow = QHBoxLayout()
+        header_label = QLabel('header rows:')
+        self.header_spinbox = QSpinBox(self, minimum=0, maximum=1000)
+        self.header_spinbox.setAlignment(Qt.AlignRight)
+        self.header_spinbox.setValue(self.default_header_rows)
+        self.header_spinbox.setToolTip('Select how many rows should be skipped\n'
+                                       'at the beginning of file. These are the\n'
+                                       'header rows.')
+
+        namecol_label = QLabel('name col:')
+        self.namecol_spinbox = QSpinBox(self, minimum=0, maximum=1000)
+        self.namecol_spinbox.setAlignment(Qt.AlignRight)
+        self.namecol_spinbox.setValue(self.default_name_column)
+        self.namecol_spinbox.setToolTip('Which column contains the name\n'
+                                        'of the location? Select 0 for None.')
+
+        xcol_label = QLabel('x col:')
+        self.xcol_spinbox = QSpinBox(self, minimum=0, maximum=1000)
+        self.xcol_spinbox.setAlignment(Qt.AlignRight)
+        self.xcol_spinbox.setValue(self.default_x_column)
+        self.xcol_spinbox.setToolTip('Which column contains the x coordinate\n'
+                                     'of the location? Select 0 for None.')
+
+        ycol_label = QLabel('y col:')
+        self.ycol_spinbox = QSpinBox(self, minimum=0, maximum=1000)
+        self.ycol_spinbox.setAlignment(Qt.AlignRight)
+        self.ycol_spinbox.setValue(self.default_y_column)
+        self.ycol_spinbox.setToolTip('Which column contains the y coordinate\n'
+                                     'of the location? Select 0 for None.')
+
+        fid_xcol_label = QLabel('ref x col:')
+        self.fid_xcol_spinbox = QSpinBox(self, minimum=0, maximum=1000)
+        self.fid_xcol_spinbox.setAlignment(Qt.AlignRight)
+        self.fid_xcol_spinbox.setValue(self.default_x_column + 2)
+        self.fid_xcol_spinbox.setToolTip('Which column contains the x reference coordinate\n'
+                                         'of the location? Select 0 for None.')
+
+        fid_ycol_label = QLabel('ref y col:')
+        self.fid_ycol_spinbox = QSpinBox(self, minimum=0, maximum=1000)
+        self.fid_ycol_spinbox.setAlignment(Qt.AlignRight)
+        self.fid_ycol_spinbox.setValue(self.default_y_column + 2)
+        self.fid_xcol_spinbox.setToolTip('Which column contains the y reference coordinate\n'
+                                         'of the location? Select 0 for None.')
+
+        secondrow.addWidget(header_label)
+        secondrow.addWidget(self.header_spinbox)
+        secondrow.addStretch()
+        secondrow.addWidget(namecol_label)
+        secondrow.addWidget(self.namecol_spinbox)
+        secondrow.addStretch()
+        secondrow.addWidget(xcol_label)
+        secondrow.addWidget(self.xcol_spinbox)
+        secondrow.addStretch()
+        secondrow.addWidget(ycol_label)
+        secondrow.addWidget(self.ycol_spinbox)
+        secondrow.addStretch()
+        secondrow.addWidget(fid_xcol_label)
+        secondrow.addWidget(self.fid_xcol_spinbox)
+        secondrow.addStretch()
+        secondrow.addWidget(fid_ycol_label)
+        secondrow.addWidget(self.fid_ycol_spinbox)
+        secondrow.addStretch()
+
+        # add to outer layout
+        outervlayout.addLayout(secondrow)
+
         # make the table
         self.datatable = QTableWidget()
         self.datatable.setRowCount(23)
         self.datatable.setColumnCount(7)
+        # implement mouse button
+        self.datatable.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.datatable.customContextMenuRequested.connect(self.context_menu)
         # set headers
         headers = [QTableWidgetItem('Name'), QTableWidgetItem('x'), QTableWidgetItem('y'),
                    QTableWidgetItem('x_ref'), QTableWidgetItem('y_ref'),
@@ -139,18 +210,7 @@ class MainApp(QWidget):
         clear_butt.setToolTip('Clear all data in the table. A confirmation will be required, but after that, there\n'
                               'is no undoing this action. Make sure you have the data, assuming you need it, saved.')
         bottrowbutthlayout.addWidget(clear_butt)
-        # copy and paste buttons
-        copybutt = QPushButton('Copy')
-        copybutt.clicked.connect(self.copy)
-        copybutt.setToolTip('Copy the selected rows into the clipboard. This selection can then be pasted, e.g., into\n'
-                            'any text file or spreadsheet file')
-        bottrowbutthlayout.addWidget(copybutt)
-        pastebutt = QPushButton('Paste')
-        pastebutt.clicked.connect(self.paste)
-        pastebutt.setToolTip('Paste cells from clipboard into the table. Note that new rows will automatically be\n'
-                             'added as needed. The program will however check that you have not selected too many\n'
-                             'columns to paste into this program.')
-        bottrowbutthlayout.addWidget(pastebutt)
+
         bottrowbutthlayout.addStretch()
         # information on Fit
         self.infolbl = QLabel('')
@@ -173,119 +233,114 @@ class MainApp(QWidget):
         # show the UI
         self.show()
 
+    def setup_keyboard_shortcuts(self):
+        # Keyboard shortcuts
+        copy_shortcut = QShortcut(QKeySequence("Ctrl+C"), self)
+        copy_shortcut.activated.connect(self.copy)
+        paste_shortcut = QShortcut(QKeySequence("Ctrl+V"), self)
+        paste_shortcut.activated.connect(self.paste)
+        open_shortcut = QShortcut(QKeySequence("Ctrl+O"), self)
+        open_shortcut.activated.connect(self.openfile)
+        del_shortcut = QShortcut(QKeySequence("Del"), self)
+        del_shortcut.activated.connect(self.delete)
+
+    def context_menu(self, position):
+        menu = QMenu()
+        copyAction = menu.addAction("Copy")
+        pasteAction = menu.addAction("Paste")
+        delAction = menu.addAction("Delete")
+        action = menu.exec_(self.datatable.mapToGlobal(position))
+        if action == copyAction:
+            self.copy()
+        elif action == pasteAction:
+            self.paste()
+        elif action == delAction:
+            self.delete()
+
     def set_calcmode(self, rb):
         if rb.isChecked():
             self.calcmode = rb.text()
             if self.rundebug:
                 print(self.calcmode)
 
-    @pyqtSlot()
-    # Buttons
-    def openfile(self, sep):
-        if self.rundebug:
-            if sep == 'txt':
-                filename = 'testinput.txt'
-            else:
-                filename = 'testadmon.csv'
-        else:
-            # file dialog
-            options = QFileDialog.Options()
-            # options |= QFileDialog.DontUseNativeDialog
-            if sep == 'csv':
-                filename, _ = QFileDialog.getOpenFileName(self, 'QFileDialog.getOpenFileName()', '',
-                                                          'Comma Separated Files (*.csv);;All Files (*)',
-                                                          options=options)
-            else:
-                filename, _ = QFileDialog.getOpenFileName(self, 'QFileDialog.getOpenFileName()', '',
-                                                          'Text Files (*.txt);;All Files (*)', options=options)
+    def openfile(self):
+        # file dialog
+        options = QFileDialog.Options()
+        # options |= QFileDialog.DontUseNativeDialog
+        filename, _ = QFileDialog.getOpenFileName(self, 'QFileDialog.getOpenFileName()', '',
+                                                  'Supported Files (*.csv *.txt *.xls *.xlsx);;All Files (*)',
+                                                  options=options)
 
-            # check for empty string, in case cancel was pressed
         if filename == '':
             return
 
-        # read the file
-        f = open(filename, 'r')
-        datain = []
-        for line in f:
-            datain.append(line)
-        f.close()
+        sep = filename[-4:len(filename)]
 
-        # # now split according to separator
-        if len(datain) < 1:
+        headerrows = int(self.header_spinbox.value())
+        namecol = int(self.namecol_spinbox.value())
+        xdatcol = int(self.xcol_spinbox.value())
+        ydatcol = int(self.ycol_spinbox.value())
+        xfidcol = int(self.fid_xcol_spinbox.value())
+        yfidcol = int(self.fid_ycol_spinbox.value())
+
+        # columns to use
+        usecol = []
+        if namecol > 0:
+            usecol.append(namecol-1)
+        usecol.append(xdatcol-1)
+        usecol.append(ydatcol-1)
+        usecol.append(xfidcol-1)
+        usecol.append(yfidcol-1)
+
+        datain = None
+        # csv and txt read in:
+        try:
+            if sep == '.csv':
+                datain = pd.read_csv(filename, header=None, skiprows=headerrows, usecols=usecol)[usecol]
+            # separator:
+            elif sep == '.txt':
+                datain = pd.read_csv(filename, delimiter='\t', header=None, skiprows=headerrows, usecols=usecol)[usecol]
+            elif sep == '.xls' or sep == 'xlsx':
+                datain = pd.read_excel(filename, header=None, skiprows=headerrows, usecols=usecol)[usecol]
+        except KeyError or ValueError:
+            self.show_data_error()
             return
-        data = []
-        for it in datain:
-            # strip newline characters
-            it.strip()
-            it.rstrip()
-            it.replace('\n', '')
-            it.replace('\r', '')
-            # separate
-            if sep == 'csv':
-                itsep = it.split(',')
-            else:
-                itsep = it.split()
-            # now move on with itsep
-            if len(itsep) > 0:
-                data.append(itsep)
-
-        # let's check if there is a location description, i.e., 3 or 5 columns
-        if len(data[0]) == 3 or len(data[0]) == 5 or len(data[0]) == 7:
-            namecolumn = True
-        elif len(data[0]) == 2 or len(data[0]) == 4 or len(data[0]) == 6:
-            namecolumn = False
-        else:
-            QMessageBox.warning(self, 'Wrong input format', 'Your input does not have a valid format.')
-            print(data)
-            return
-
-        # now make floats, and if not skip the column
-        dataflt = []
-        headercolumn = False
-        for it in range(len(data)):
-            tmp = []
-            if namecolumn:
-                tmp.append(data[it][0])
-                for jt in range(1, len(data[it])):
-                    try:
-                        float(data[it][jt])
-                        tmp.append(data[it][jt])
-                    except ValueError:
-                        if jt == 1:
-                            headercolumn = True
-                        else:
-                            tmp.append('')
-                if headercolumn:
-                    headercolumn = False
-                    continue
-                else:
-                    dataflt.append(tmp)
-
-            else:
-                for jt in range(len(data[it])):
-                    try:
-                        tmp.append(float(data[it][jt]))
-                    except ValueError:
-                        if jt == 1:
-                            headercolumn = True
-                        else:
-                            tmp.append('')
-                if headercolumn:
-                    headercolumn = False
-                    continue
-                else:
-                    dataflt.append(tmp)
 
         # first set the length of the table to be the length of the data
-        self.datatable.setRowCount(len(dataflt))
+        self.datatable.setRowCount(0)
+        # name column present
+        namecolpresent = False
+        if namecol > 0:
+            namecolpresent = True
 
-        # now fill the table with the values that were just read in
-        for it in range(len(dataflt)):
-            for jt in range(len(dataflt[it])):
-                self.datatable.setItem(it, jt, QTableWidgetItem(dataflt[it][jt]))
+        # now add data rows
+        for it in range(datain.shape[0]):
+            row = []
+            if not namecolpresent:
+                row.append('')
+            for jt in range(datain.shape[1]):
+                row.append(datain.iloc[it, jt])
+            # add the row to the table
+            self.addTableRow(row)
 
         # adjust table size
         self.datatable.resizeColumnsToContents()
+
+    def show_data_error(self):
+        QMessageBox.warning(self, 'Requested data not found', 'Could not find the data you requested. Please ensure'
+                                                              'that the data exists in the respective columns.')
+
+    def addTableRow(self, row_data):
+        row = self.datatable.rowCount()
+        self.datatable.setRowCount(row+1)
+        col = 0
+        for item in row_data:
+            itemstr = str(item)
+            if itemstr == 'nan':
+                itemstr = ''
+            cell = QTableWidgetItem(itemstr)
+            self.datatable.setItem(row, col, cell)
+            col += 1
 
     def savefile(self, sep):
         # get file name from dialog
@@ -311,7 +366,7 @@ class MainApp(QWidget):
 
         # write header
         f.writelines('Name' + ss + 'x_old' + ss + 'y_old' + ss + 'x_ref' + ss + 'y_ref' + ss + 'x_calc' + ss +
-                     'y_calc'  + '\n')
+                     'y_calc' + '\n')
         # write the data out
 
         for it in range(self.datatable.rowCount()):
@@ -335,17 +390,10 @@ class MainApp(QWidget):
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Information)
         msgBox.setWindowTitle('Help')
-        msgBox.setInformativeText('\bHelp\n\n\bColumns:\n'
-                                  'Name:\tThe name of the given location\n'
-                                  'x:\tThe x coordinate in the old reference system\n'
-                                  'y:\tThe y coordinate in the old reference system\n'
-                                  'x_ref:\tThe measured x coordinate in the new reference system\n'
-                                  'y_ref:\tThe measured y coordinate in the new reference system\n'
-                                  'x_calc:\tThe regressed x coordinate in the new reference system\n'
-                                  'x_calc:\tThe regressed x coordinate in the new reference system\n\n'
-                                  'For additional help, hover over the buttons and a tooltip will appear\n'
-                                  'that will explain what the button does. Also: just play with the\n'
-                                  'program, it should hopefully be rather self explanatory\n\n'
+        msgBox.setInformativeText('\bHelp\n\n'
+                                  'Help is implemented with tooltips, hover over the buttons in question\n'
+                                  'and you should receive some information.\n\n'
+                                  'Routines:\n'
                                   'Nittler: (PhD Thesis Larry Nittler, Appendix E)\n'
                                   'Linear regression to as many reference points that are given. Only \n'
                                   'Rotation and shift are included in this method. No stretch of the data.\n'
@@ -556,6 +604,14 @@ class MainApp(QWidget):
     def addrow(self):
         self.datatable.insertRow(self.datatable.rowCount())
 
+    # def keyPressEvent(self, event):
+    #     """
+    #     Implement copy, paste
+    #     """
+    #     if type(event) == QKeyEvent:
+    #         if event.key() == Qt.Key_Space:
+    #             print('spacer')
+    #
     def copy(self):
         inds = []
         for idx in self.datatable.selectedIndexes():
@@ -564,8 +620,7 @@ class MainApp(QWidget):
         str2cpy = ''
         try:
             oldrow = inds[0][0]
-        except IndexError:   # nothing selected
-            QMessageBox.warning(self, 'Selection error', 'Select cells to copy!')
+        except IndexError:   # nothing selected, then just do nothing
             return
         for it in range(len(inds)):
             # easier handling
@@ -575,9 +630,9 @@ class MainApp(QWidget):
             # check if the first
             if it == 0:
                 if datfield is None:
-                    str2cpy += ''
+                    str2cpy = ''
                 else:
-                    str2cpy += datfield.text()
+                    str2cpy = datfield.text()
             else:
                 # add separator
                 if oldrow == row:
@@ -591,6 +646,7 @@ class MainApp(QWidget):
                     str2cpy += datfield.text()
             # set new row
             oldrow = row
+
         # now copy the string to the clipboard
         self.clipboard.clear()
         self.clipboard.setText(str2cpy)
@@ -629,6 +685,22 @@ class MainApp(QWidget):
         for row in range(len(data)):
             for col in range(len(data[row])):
                 self.datatable.setItem(row + currind[0], col+currind[1], QTableWidgetItem(data[row][col]))
+
+    def delete(self):
+        # get the current index
+        inds = []
+        try:
+            for idx in self.datatable.selectedIndexes():
+                inds.append([idx.row(), idx.column()])
+        except IndexError:   # nothing selected
+            return
+
+        # selected indeces
+        print(inds)
+
+        # now fill the cells with the pasted stuff
+        for row, col in inds:
+            self.datatable.setItem(row, col, QTableWidgetItem(''))
 
     def cleartable(self):
         # clear the table
