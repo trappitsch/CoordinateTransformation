@@ -1,11 +1,27 @@
+# Various
 div/
 div/*
+
+# Build directories
 target/
 target/*
+
+# Virtual environments
 venv/
 venv/*
+
+# PyCharm
 *.idea/
+
+# ST3
+*.sublime-project
+*.sublime-workspace
+
+# Python binaries
+*.pyc
+
+# OSX
 *.DS_Store/
-*.pyc
+
 
 src/main/python/__pycache__/CoordinateTransformation.cpython-37.pyc
