@@ -14,10 +14,14 @@ class MainApp(QWidget):
 
     Developer:  Reto Trappitsch, trappitsch1@llnl.gov
     Version:    2.1.0
-    Date:       April 14, 2020
+    Date:       April 15, 2020
     """
 
     def __init__(self):
+        # version number:
+        self.version = '2.1.0'
+        self.version_date = 'April 15, 2020'
+
         # run in debug mode?
         self.rundebug = False
         # round digits
@@ -390,11 +394,11 @@ class MainApp(QWidget):
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Information)
         msgBox.setWindowTitle('Help')
-        msgBox.setInformativeText('\bHelp\n\n'
+        msgBox.setInformativeText('Help\n\n'
                                   'Help is implemented with tooltips, hover over the buttons in question\n'
                                   'and you should receive some information.\n\n'
                                   'Routines:\n'
-                                  'Nittler: (PhD Thesis Larry Nittler, Appendix E)\n'
+                                  'Nittler: (PhD Thesis Larry Nittler, Appendix F)\n'
                                   'Linear regression to as many reference points that are given. Only \n'
                                   'Rotation and shift are included in this method. No stretch of the data.\n'
                                   'Make sure that the reference systems are in the same unit system!\n\n'
@@ -403,8 +407,9 @@ class MainApp(QWidget):
                                   'coordinate system is also calculated. Ideal when switching between\n'
                                   'different units from one coordinate system to the next. This method\n'
                                   'was so far used by LLNL NanoSIMS group.\n\n'
-                                  'Bug reports, in person help, further info, input:\n'
-                                  'Contact Reto Trappitsch, trappitsch1@llnl.gov')
+                                  'Author: Reto Trappitsch (trappitsch1@llnl.gov)\n'
+                                  'Version: ' + self.version + '\n'
+                                  'Date: ' + self.version_date + '\n\n')
         msgBox.setStandardButtons(QMessageBox.Ok)
         msgBox.exec()
 
