@@ -105,7 +105,7 @@ This will create a virtual environment with python3.6 as the base interpreter, n
 
 #### fbs installation
 
-To install fbs on your system follow the [fbs tutorial](https://github.com/mherrmann/fbs-tutorial) or check out the [RIMS software documentation](https://github.com/trappitsch/RIMSDocs). 
+To install fbs on your system follow the [fbs tutorial](https://github.com/mherrmann/fbs-tutorial). 
 
 #### Installation of dependencies
 
@@ -125,3 +125,10 @@ This should do it, look for the output of each step to find the created files.
 ## Issue reporting
 
 To report an issue with this software package, please open a "New issue" on this github page. Please use the predefined template for guidance on what is required.
+
+## License
+
+CoordinateTransformation is Copyright (C) 2020 Reto Trappitsch  
+It is licensed under the GPL (version 2 or greater).
+
+CoordinateTransformation makes use of [PyQt5](https://riverbankcomputing.com/) and the fman build system [fbs](https://build-system.fman.io/).

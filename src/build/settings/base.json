@@ -2,5 +2,5 @@
     "app_name": "Coordinate Transformation",
     "author": "Reto Trappitsch",
     "main_module": "src/main/python/CoordinateTransformation.py",
-    "version": "2.1.0"
+    "version": "2.1.1"
 }

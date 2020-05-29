@@ -1,3 +1,21 @@
+"""
+Copyright (C) 2020 Reto Trappitsch
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+"""
+
 import sys
 import pandas as pd
 import numpy as np
@@ -12,15 +30,15 @@ class MainApp(QWidget):
     """
     Coordinate transform program for relocating samples in different coordinate systems
 
-    Developer:  Reto Trappitsch, trappitsch1@llnl.gov
-    Version:    2.1.0
-    Date:       April 15, 2020
+    Developer:  Reto Trappitsch
+    Version:    2.1.1
+    Date:       May 29, 2020
     """
 
     def __init__(self):
         # version number:
-        self.version = '2.1.0'
-        self.version_date = 'April 15, 2020'
+        self.version = '2.1.1'
+        self.version_date = 'May 29, 2020'
 
         # run in debug mode?
         self.rundebug = False
@@ -394,8 +412,7 @@ class MainApp(QWidget):
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Information)
         msgBox.setWindowTitle('Help')
-        msgBox.setInformativeText('Help\n\n'
-                                  'Help is implemented with tooltips, hover over the buttons in question\n'
+        msgBox.setInformativeText('Help is implemented with tooltips, hover over the buttons in question\n'
                                   'and you should receive some information.\n\n'
                                   'Routines:\n'
                                   'Nittler: (PhD Thesis Larry Nittler, Appendix F)\n'
@@ -405,9 +422,8 @@ class MainApp(QWidget):
                                   'Admon: (Admon et al. (2005) Microsc. Microanal. 11, 354–362)\n'
                                   'Only three fiducial marks can be selected, however, stretch of the\n'
                                   'coordinate system is also calculated. Ideal when switching between\n'
-                                  'different units from one coordinate system to the next. This method\n'
-                                  'was so far used by LLNL NanoSIMS group.\n\n'
-                                  'Author: Reto Trappitsch (trappitsch1@llnl.gov)\n'
+                                  'different units from one coordinate system to the next.\n\n'
+                                  'Author: Reto Trappitsch\n'
                                   'Version: ' + self.version + '\n'
                                   'Date: ' + self.version_date + '\n\n')
         msgBox.setStandardButtons(QMessageBox.Ok)
