@@ -1,5 +1,5 @@
 setuptools==44.0.0
-PyInstaller==3.4
+PyInstaller==3.6
 PyQt5==5.9.2
 fbs>=0.8.4
 numpy
