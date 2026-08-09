@@ -1,5 +1,5 @@
 PyInstaller==5.13.1
-setuptools==65.5.1
+setuptools==83.0.0
 PyQt5==5.9.2
 fbs>=0.8.4
 numpy
